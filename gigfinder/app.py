@@ -1,35 +1,47 @@
 import streamlit as st
+import requests
 
-# Mock freelance project listings
-project_listings = {
-    "python": [
-        {"platform": "Upwork", "title": "Automate Excel Reports", "budget": "$250", "desc": "Automate reports using pandas."},
-        {"platform": "Freelancer", "title": "PDF Parser", "budget": "₹4,500", "desc": "Parse scanned PDFs with Python."},
-        {"platform": "Fiverr", "title": "Automation Bot", "budget": "₹2,000", "desc": "Create bot for browser tasks."}
-    ],
-    "design": [
-        {"platform": "Fiverr", "title": "Logo for Clothing Brand", "budget": "₹2,500", "desc": "Minimalist logo for streetwear."},
-        {"platform": "Upwork", "title": "Poster Design", "budget": "$150", "desc": "Design event posters in Illustrator."},
-        {"platform": "Freelancer", "title": "UI/UX for Web App", "budget": "₹5,000", "desc": "Design UI screens for dashboard."}
-    ]
-}
+# Function to call Hugging Face LLM API
+def generate_jobs(skill, hf_token):
+    API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
+    headers = {
+        "Authorization": f"Bearer {hf_token}"
+    }
 
-st.set_page_config(page_title="GigFinder", page_icon="🧠")
-st.title("🤖 GigFinder - Your Freelance Project Buddy")
+    # System-level prompt
+    prompt = f"""
+You are an AI freelance assistant. Given the skill '{skill}', generate 3 realistic freelance project listings.
+Each listing must include:
+- Platform (Upwork, Fiverr, Freelancer, Glassdoor)
+- Title of the job
+- Budget or Pay
+- 1-line Summary of the work
+Give clear output in bullet format.
+"""
 
-category = st.text_input("What is your skill/category? (e.g., Python, Design)").lower()
+    # Call the model
+    payload = {"inputs": prompt}
+    response = requests.post(API_URL, headers=headers, json=payload)
+
+    if response.status_code == 200:
+        try:
+            return response.json()[0]['generated_text']
+        except:
+            return "Model response format not understood. Try a different model or prompt."
+    else:
+        return f"❌ Error {response.status_code}: {response.text}"
+
+# Streamlit UI
+st.set_page_config(page_title="GigFinder", page_icon="💼")
+st.title("🤖 GigFinder - AI-Powered Freelance Project Assistant")
+
+skill = st.text_input("Enter your skill (e.g., Python, UI/UX, Graphic Design)")
+hf_token = st.text_input("Enter your Hugging Face API token", type="password")
 
 if st.button("Find Projects"):
-    if category in project_listings:
-        st.subheader(f"🔎 Projects for '{category}'")
-        for job in project_listings[category]:
-            st.markdown(f"""
-            **Platform**: {job['platform']}  
-            **Title**: {job['title']}  
-            **Budget**: {job['budget']}  
-            **Description**: {job['desc']}  
-            ---
-            """)
+    if not skill or not hf_token:
+        st.warning("Please enter both your skill and Hugging Face token.")
     else:
-        st.warning("Sorry, no projects found for this category. Try 'Python' or 'Design'.")
-
+        st.info("⏳ Asking the AI assistant...")
+        output = generate_jobs(skill, hf_token)
+        st.text_area("🧾 Freelance Listings", output, height=300)
