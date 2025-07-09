@@ -1,25 +1,45 @@
 import streamlit as st
-import requests
+import openai
 
-# ✅ load token securely
-hf_token = st.secrets["huggingface"]["api_token"]
-st.write("🔑 Token Preview:", hf_token[:8] + "..." if hf_token else "❌ Not loaded")
+# Load OpenAI API key from secrets
+openai.api_key = st.secrets["openai"]["api_key"]
 
+# Define the assistant function
+def generate_projects(skill):
+    prompt = f"""
+You are a freelance project assistant. Based on the skill '{skill}', list 3 relevant freelance projects.
+Each project should include:
+- Platform (like Upwork, Fiverr, Freelancer, Glassdoor)
+- Project Title
+- Budget or Payment
+- A 1-line description
+Format output clearly using bullet points.
+"""
 
-# ✅ headers used for authorization
-headers = {
-    "Authorization": f"Bearer {hf_token}"
-}
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that helps freelancers find projects."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=500
+        )
+        return response.choices[0].message["content"]
+    except Exception as e:
+        return f"❌ Error: {e}"
 
-# ✅ simple test function
-def test_model():
-    payload = {"inputs": "Say Hello"}
-    API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
-    response = requests.post(API_URL, headers=headers, json=payload)
-    return response.status_code, response.text
+# -------- Streamlit UI --------
+st.set_page_config(page_title="GigFinder AI", page_icon="💼")
+st.title("🤖 GigFinder - Freelance Project Assistant")
 
-# ✅ test in UI
-st.title("🔍 Hugging Face Token Debug")
-status, text = test_model()
-st.write("Status Code:", status)
-st.code(text)
+skill = st.text_input("Enter your skill or category (e.g., Python, UI/UX, WordPress)")
+
+if st.button("Find Freelance Projects"):
+    if not skill.strip():
+        st.warning("⚠️ Please enter a skill.")
+    else:
+        with st.spinner("🔍 Searching..."):
+            output = generate_projects(skill)
+            st.text_area("📋 Project Listings", output, height=300)
