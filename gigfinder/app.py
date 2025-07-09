@@ -3,6 +3,8 @@ import requests
 
 # ✅ load token securely
 hf_token = st.secrets["huggingface"]["api_token"]
+st.write("🔑 Token Preview:", hf_token[:8] + "..." if hf_token else "❌ Not loaded")
+
 
 # ✅ headers used for authorization
 headers = {
